@@ -1,0 +1,43 @@
+// Parameters
+real E = 21.5;
+real sigma = 0.29;
+real gravity = -0.01;
+
+// Mesh
+border a(t=1, 0){x=0; y=t; label=1;}
+border b(t=0, 10){x=t; y=0; label=2;}
+border c(t=0, 1){ x=10; y=t; label=3;}
+border d(t=0, 10){ x=10-t; y=1; label=4;}
+
+mesh th = buildmesh(b(40) + c(10) + d(40) + a(10));
+
+// Fespace
+fespace Vh(th, [P1, P1]);
+Vh [u1, u2];
+Vh [v1, v2];
+
+// Macro
+real sqrt2 = sqrt(2.);
+macro epsilon(u1, u2) [dx(u1), dy(u2), (dy(u1)+dx(u2))/sqrt2] //
+macro div(u1, u2) (dx(u1) + dy(u2)) //
+
+// Problem
+real mu = E/(2*(1+sigma));
+real lambda = E*sigma/((1+sigma)*(1-2*sigma));
+solve Elasticity ([u1, u2], [v1, v2])
+= int2d(th)(
+lambda*div(v1, v2)*div(u1, u2)
++ 2.*mu*(epsilon(v1, v2)'*epsilon(u1, u2))
+)
++ int2d(th)(
+- gravity*v2
+)
++ on(1, u1 = 0, u2 = 0)
+;
+
+// Plot
+plot([u1, u2], wait=true);
+
+// Movemesh
+mesh th1 = movemesh(th, [x + u1, y + u2]);
+plot(th1, wait=true);
