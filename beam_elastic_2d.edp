@@ -1,39 +1,68 @@
 // Parameters
-real E = 21.5;
-real sigma = 0.29;
+//real E = 21.5;
+real E = 21.5*5.0;
+real poisson = 0.29;
 real gravity = -0.01;
+real P = 1.0;
 
 // Mesh
-border a(t=1, 0){x=0; y=t; label=1;}
-border b(t=0, 10){x=t; y=0; label=2;}
-border c(t=0, 1){ x=10; y=t; label=3;}
-border d(t=0, 10){ x=10-t; y=1; label=4;}
+border a(t=6, 0){x=0; y=t; label=1;}
+border b(t=0, 48){x=t; y=0; label=2;}
+border c(t=0, 6){x=48; y=t; label=3;}
+border d1(t=0, 12){x=48-t; y=6; label=4;}
+border d2(t=12, 24){x=48-t; y=6; label=5;}
+border d3(t=24, 36){x=48-t; y=6; label=6;}
+border d4(t=36, 48){x=48-t; y=6; label=7;}
 
-mesh th = buildmesh(b(40) + c(10) + d(40) + a(10));
+real Dep = 6.0;
+
+mesh th = buildmesh(b(120) + c(20) + d1(30) + d2(30) + d3(30) + d4(30) + a(20));
 
 // Fespace
-fespace Vh(th, [P1, P1]);
+fespace Vh(th, [P2, P2]);
+fespace V1h(th, P2);
 Vh [u1, u2];
 Vh [v1, v2];
 
+// load
+//V1h lod = -(3.0*P)/(4.0*Dep^3)*(Dep^2 - y^2);
+V1h lod = (3.0*P)/(4.0*Dep^3)*(Dep^2 - y^2);
+V1h vl = -1.0;
+
 // Macro
-real sqrt2 = sqrt(2.);
+real sqrt2 = sqrt(2.0);
 macro epsilon(u1, u2) [dx(u1), dy(u2), (dy(u1)+dx(u2))/sqrt2] //
 macro div(u1, u2) (dx(u1) + dy(u2)) //
 
+// exact
+// Vh = [u1ex, u2ex] = []
+
 // Problem
-real mu = E/(2*(1+sigma));
-real lambda = E*sigma/((1+sigma)*(1-2*sigma));
+real mu = E/(2*(1+poisson));
+real lambda = E*poisson/((1+poisson)*(1.0 - 2.0*poisson));
+macro s11(u1, u2) (lambda*div(u1, u2) + 2.0*mu*dx(u1)) //
+macro s12(u1, u2) (2.0*mu*(dy(u1)+dx(u2))/sqrt2) //
+macro s21(u1, u2) (2.0*mu*(dy(u1)+dx(u2))/sqrt2) //
+macro s22(u1, u2) (lambda*div(u1, u2) + 2.0*mu*dy(u2)) //
+macro mieses(u1, u2) (sqrt(0.5*((s11 - s22)^2 + s11^2 + s22^2 + 3.0*(s12^2 + s21^2)))) //
+
 solve Elasticity ([u1, u2], [v1, v2])
 = int2d(th)(
 lambda*div(v1, v2)*div(u1, u2)
-+ 2.*mu*(epsilon(v1, v2)'*epsilon(u1, u2))
++ 2.0*mu*(epsilon(v1, v2)'*epsilon(u1, u2))
 )
-+ int2d(th)(
-- gravity*v2
-)
+//+ int2d(th)(
+//- gravity*v2
+//)
+- int1d(th, 3)(lod*v2)
+//- int1d(th, 6)(0.5*vl*v2) - int1d(th, 7)(0.5*vl*v2)
+- int1d(th, 7)(vl*v2)
 + on(1, u1 = 0, u2 = 0)
 ;
+
+// check
+real minarea = checkmovemesh(th, [x + u1, y + u2]);
+cout << " Min area = " << minarea << endl;
 
 // Plot
 plot([u1, u2], wait=true);
