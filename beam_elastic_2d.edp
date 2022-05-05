@@ -44,7 +44,7 @@ macro s11(u1, u2) (lambda*div(u1, u2) + 2.0*mu*dx(u1)) //
 macro s12(u1, u2) (2.0*mu*(dy(u1)+dx(u2))/sqrt2) //
 macro s21(u1, u2) (2.0*mu*(dy(u1)+dx(u2))/sqrt2) //
 macro s22(u1, u2) (lambda*div(u1, u2) + 2.0*mu*dy(u2)) //
-macro mieses(u1, u2) (sqrt(0.5*((s11 - s22)^2 + s11^2 + s22^2 + 3.0*(s12^2 + s21^2)))) //
+macro mieses(u1, u2) (sqrt(0.5*((s11(u1, u2) - s22(u1, u2))^2 + s11(u1, u2)^2 + s22(u1, u2)^2 + 3.0*(s12(u1, u2)^2 + s21(u1, u2)^2)))) //
 
 solve Elasticity ([u1, u2], [v1, v2])
 = int2d(th)(
@@ -65,8 +65,12 @@ real minarea = checkmovemesh(th, [x + u1, y + u2]);
 cout << " Min area = " << minarea << endl;
 
 // Plot
-plot([u1, u2], wait=true);
+plot([u1, u2], value = true, wait = true);
 
 // Movemesh
 mesh th1 = movemesh(th, [x + u1, y + u2]);
-plot(th1, wait=true);
+plot(th1, wait = true);
+
+// Mieses
+V1h ms = mieses(u1, u2);
+plot(ms, fill = true, value = true, wait = true, dim = 2);
